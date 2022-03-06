@@ -1,4 +1,11 @@
+#Debugging files
+*.i
+*.c
+*.h
+
+#Executables
 mission-000
 mission-000.exe
 
 .DS_Store
+*.so
