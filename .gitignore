@@ -9,3 +9,4 @@ mission-000.exe
 
 .DS_Store
 *.so
+*.dylib
