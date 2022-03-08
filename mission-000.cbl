@@ -119,12 +119,17 @@
            END-PERFORM.
 
        0009-DETECT-ERROR.
+           SET ERROR-COUNTER TO 0.
            PERFORM VARYING I FROM 1 BY 1 UNTIL I IS GREATER 7
             IF RECALC-PARITY-VALUE(I) IS NOT EQUAL TO PARITY-VALUE(I) 
              THEN
              ADD 1 TO ERROR-COUNTER
             END-IF
            END-PERFORM.
-           DISPLAY "Errors detected: " ERROR-COUNTER.
+           IF ERROR-COUNTER GREATER 0 THEN
+            DISPLAY "Error detected."
+           ELSE
+            DISPLAY "No error detected."
+           END-IF.
 
        END PROGRAM MISSION-000.
