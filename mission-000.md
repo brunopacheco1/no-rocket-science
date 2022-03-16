@@ -1,4 +1,4 @@
-# Mission 000
+# Mission 000 - System failure
 
 A system failure occurred which made many services unavailable. The failure was detected and Earth was automatically informed. They periodically send a recovery key which will recover the system. However, there is a problem. The service which would listen to messages from Earth is also unavailable. By monitoring the network you're still able to catch all signals from Earth and find the recovery key in them. You just need to write a program.
 
@@ -9,23 +9,21 @@ By looking through the manual of the spaceship you find out how messages are str
 The message format bellow displays position numbers incrementing from left to right but in binary form the positions are left aligned. In other words, all bits are in reverse order.
 
 ```
-/---------------------------------------------------------------------------------------------------------------------------------\
-| 0                   1                   2                   3                   4                   5                   6       |
-| 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 |
-|---------------------------------------------------------------------------------------------------------------------------------|
-| P P P c P c c c P c c c c x s s P s s s s s s s s s s s s s s s P s s s s s s s s s s s s s s s p p p p p p p p p p p p p p p p |
-\---------------------------------------------------------------------------------------------------------------------------------/
 
-P - parity
-c - char
-x - reserved bit
-s - sequence
-p - port number
+                ┌┬┬┬┬┬┬┬┬┬┬┬┬┬┬─┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬─┬┬─ sequence
+                │││││││││││││││ │││││││││││││││ ││ ┌┬┬┬─┬┬┬─┬── char
+                │││││││││││││││ │││││││││││││││ ││ ││││ │││ │
+1111111111111111111111111111111111111111111111111111111111111111
+││││││││││││││││               │               │       │   │ │││
+││││││││││││││││               └───────────────┴───────┴───┴─┴┴┴─ parity
+└┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴─ port
 ```
 
 ### Parity
 
 Every message is protected with Hamming(64,57) this means when the message travels through space a single bit flip can be corrected and two bit flips can be detected.
+
+Parity bits are located at 0, 1, 2, 4, 8, 16, and 32. All of these are powers of two.
 
 ### Char
 
@@ -37,18 +35,80 @@ This bit is not used. It is reserved for future use.
 
 ### Sequence
 
-Messages arrive unordered. You have to use their sequence to find the correct order. This sequence is not monotonic.
+Messages arrive unordered. Sequence number is there to find the correct order and detect duplicates. This sequence is not monotonic.
 
 ### Port number
 
 There are multiple services running on your machine listening on different ports. You have to find the one related to recovery.
 
+## Example
+
+Given the following message:
+
+```
+1110111011110101000010001000110001111000101101001101110100110100
+```
+
+With hamming code we can detect a bit flip. All you have to do is XOR all position numbers where the bit value is `1`.
+
+```
+                                                   ┌─ incorrect bit
+1110111011110101000010001000110001111000101101001101110100110100
+```
+
+After correcting a single bit error we get:
+
+```
+1110111011110101000010001000110001111000101101001100110100110100
+```
+
+Each value can be identified by their bit position.
+
+- port: `0b1110111011110101` = `61173`
+- sequence: `0b00001000100011001111000101101011` = `143454571`
+- char: `0b01100010` = `b`
+
 ## Hints
 
-1. You can use XOR to find the position of the bad bit.
-2. Flip of two bits can be detected by the global parity bit.
-3. Pure data values from hamming can be sorted based on their integer value. No need for splitting into individual data.
-4. The recovery key (flag) contains 32 hexadecimal characters.
+### Finding incorrect bits
+
+In this example I will use Hamming(16,11) but the same rules should apply.
+
+Given the following message:
+
+```
+0100111011001101
+```
+
+The number of `1` bits in the left most 15 bits is 8. Which does not match with the global parity bit.
+
+```
+1110 | decimal: 14
+1011 | decimal: 11
+1010 | decimal: 10
+1001 | decimal:  9
+0111 | decimal:  7
+0110 | decimal:  6
+0011 | decimal:  3
+0010 | decimal:  2
+0000 | decimal:  0
+XOR:
+0110 | decimal:  6
+```
+
+The result of our XOR is 6.
+
+There could be a single bit error at position 6.
+
+```
+0100111011001101
+         |     
+0100111010001101
+```
+
+Furthermore, if our XOR has a value other than zero and the global parity bit is correct then there could be two incorrect bits.
+
+If our XOR value is zero and the global parity bit is invalid then the flipped bit could be the global parity bit.
 
 ## Learning resources
 
