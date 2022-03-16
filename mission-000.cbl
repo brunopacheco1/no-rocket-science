@@ -22,7 +22,7 @@
        WORKING-STORAGE SECTION.
        01  WS-WORK-AREAS.
            88 IS-MESSAGE VALUE HIGH-VALUES.
-           05 PORT-NUMBER PIC 9(5).
+           05 LISTENING-PORT USAGE BINARY-SHORT UNSIGNED.
            05 REVERSED-MESSAGE PIC X(64).
            05 OVERAL-PARITY-BIT PIC 9.
            05 RECALCULATED-OVERAL-PARITY-BIT PIC 9.
@@ -30,6 +30,18 @@
            05 I USAGE COMP-5 PIC 9.
            05 WRONG-BIT-POS USAGE COMP-5 PIC 9.
            05 WRONG-BIT USAGE COMP-5 PIC 9.
+           05 TST-SEQUENCE USAGE BINARY-LONG UNSIGNED.
+           
+       01 CURRENT-DATA-MESSAGE.
+           05 CURRENT-PORT PIC X(16).
+           05 CURRENT-SEQUENCE PIC X(32).
+           05 RESERVED-BIT PIC X.
+           05 CURRENT-CHAR PIC X(8).
+
+       01  WS-MESSAGES OCCURS 200 TIMES INDEXED BY J.
+           05 MSG-PORT-NUMBER USAGE BINARY-SHORT UNSIGNED.
+           05 MSG-SEQUENCE USAGE BINARY-LONG UNSIGNED.
+           05 MSG-CHAR USAGE BINARY-CHAR UNSIGNED.
 
        PROCEDURE DIVISION.
        
@@ -57,7 +69,8 @@
             END-READ.
 
        0003-PROCESS-PORT.
-           MOVE MESSAGE-TEXT(7:5) TO PORT-NUMBER.
+           MOVE MESSAGE-TEXT(7:5) TO LISTENING-PORT.
+           DISPLAY LISTENING-PORT.
 
        0004-PROCESS-MESSAGE.
            PERFORM 0005-REVERSE-MESSAGE.
@@ -69,9 +82,9 @@
        
        0005-REVERSE-MESSAGE.
            MOVE FUNCTION REVERSE(MESSAGE-TEXT) TO REVERSED-MESSAGE.
-           DISPLAY SPACE.
-           DISPLAY "Message       : " MESSAGE-TEXT.
-           DISPLAY "Reversed      : " REVERSED-MESSAGE.
+      *     DISPLAY SPACE.
+      *     DISPLAY "Message       : " MESSAGE-TEXT.
+      *     DISPLAY "Reversed      : " REVERSED-MESSAGE.
 
        0006-READ-OVERAL-PARITY-BIT.
            MOVE REVERSED-MESSAGE(1:1) TO OVERAL-PARITY-BIT.
@@ -100,10 +113,18 @@
       *    TODO - Parse 1 to bit or boolean and then negate.
            COMPUTE WRONG-BIT = FUNCTION MOD(WRONG-BIT + 1, 2).
            MOVE WRONG-BIT TO REVERSED-MESSAGE(WRONG-BIT-POS:1).
-           DISPLAY "Fixed reversed: " REVERSED-MESSAGE.
+      *     DISPLAY "Fixed reversed: " REVERSED-MESSAGE.
            
        0009-READ-DATA.
-      *    TODO - Read port, sequence and char into dynamic list.
+           SET J TO 1.
+           PERFORM VARYING I FROM 64 BY -1 UNTIL I IS EQUAL 0
+            IF I NOT EQUAL 1 AND NOT EQUAL 2 AND NOT EQUAL 3
+              AND NOT EQUAL 5 AND NOT EQUAL 9 AND NOT EQUAL 17 
+              AND NOT EQUAL 33 THEN
+             MOVE REVERSED-MESSAGE(I:1) TO CURRENT-DATA-MESSAGE(J:1)
+             ADD 1 TO J
+            END-IF
+           END-PERFORM.
       *    TODO - Add message to the right position in the array,
       *            to simplify sorting.
       
