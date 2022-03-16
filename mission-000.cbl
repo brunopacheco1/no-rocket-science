@@ -8,7 +8,8 @@
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
-           SELECT MISSION-FILE ASSIGN TO "mission-000.dat"
+           SELECT MISSION-FILE ASSIGN 
+            TO "mission-000.dat"
             ORGANIZATION IS LINE SEQUENTIAL.
        
        DATA DIVISION.
@@ -22,19 +23,13 @@
        01  WS-WORK-AREAS.
            88 IS-MESSAGE VALUE HIGH-VALUES.
            05 PORT-NUMBER PIC 9(5).
+           05 REVERSED-MESSAGE PIC X(64).
+           05 OVERAL-PARITY-BIT PIC 9.
+           05 RECALCULATED-OVERAL-PARITY-BIT PIC 9.
            05 ODD-COUNTER PIC 99.
-           05 I PIC 99.
-           05 J PIC 99.
-           05 K PIC 99.
-           05 L PIC 99.
-           05 PARITY-STEPS PIC 99.
-           05 PARITY-CHUNK PIC 99.
-           05 ERROR-COUNTER PIC 9.
-       01  REVERSED-MESSAGE PIC X(64).
-       01  PARITY-BIT OCCURS 7 TIMES.
-           05 PARITY-INDEX PIC 99.
-           05 PARITY-VALUE PIC 9.
-           05 RECALC-PARITY-VALUE PIC 9.
+           05 I USAGE COMP-5 PIC 9.
+           05 WRONG-BIT-POS USAGE COMP-5 PIC 9.
+           05 WRONG-BIT USAGE COMP-5 PIC 9.
 
        PROCEDURE DIVISION.
        
@@ -66,70 +61,53 @@
 
        0004-PROCESS-MESSAGE.
            PERFORM 0005-REVERSE-MESSAGE.
-           PERFORM 0006-READ-PARITY-BITS.
+           PERFORM 0006-READ-OVERAL-PARITY-BIT.
            PERFORM 0007-RECALCULATE-OVERALL-PARITY-BIT.
-           PERFORM 0008-RECALCULATE-PARITY-BITS.
-           PERFORM 0009-DETECT-ERROR.
+           PERFORM 0008-FIX-ERROR.
+           PERFORM 0009-READ-DATA.
+           PERFORM 0010-DISPLAY-FLAG.
        
        0005-REVERSE-MESSAGE.
-           SET I TO 1.
-           PERFORM VARYING J FROM 64 by -1 until J EQUAL 0
-            MOVE MESSAGE-TEXT(I:1) to REVERSED-MESSAGE(J:1)
-            ADD 1 TO I
-           END-PERFORM.
+           MOVE FUNCTION REVERSE(MESSAGE-TEXT) TO REVERSED-MESSAGE.
+           DISPLAY SPACE.
+           DISPLAY "Message       : " MESSAGE-TEXT.
+           DISPLAY "Reversed      : " REVERSED-MESSAGE.
 
-       0006-READ-PARITY-BITS.
-           SET PARITY-INDEX(1) TO 1
-           MOVE REVERSED-MESSAGE(1:1) TO PARITY-VALUE(1)
-           PERFORM VARYING I FROM 2 BY 1 UNTIL I IS GREATER 7
-            COMPUTE PARITY-INDEX(I) = 2 ** (I - 2)
-            ADD 1 TO PARITY-INDEX(I)
-            MOVE REVERSED-MESSAGE(PARITY-INDEX(I):1) TO PARITY-VALUE(I)
-           END-PERFORM.
-        
+       0006-READ-OVERAL-PARITY-BIT.
+           MOVE REVERSED-MESSAGE(1:1) TO OVERAL-PARITY-BIT.
+
+      *    TODO - Is this really necessary? Is there double error messages?
+      *            If there is, should I discard the message?
        0007-RECALCULATE-OVERALL-PARITY-BIT.
-           MOVE "0" TO REVERSED-MESSAGE(1:1)
            SET ODD-COUNTER TO 0.
-           PERFORM VARYING I FROM 1 BY 1 UNTIL I IS GREATER 64
+           PERFORM VARYING I FROM 2 BY 1 UNTIL I IS GREATER 64
             IF REVERSED-MESSAGE(I:1) EQUAL "1" THEN
              ADD 1 TO ODD-COUNTER
             END-IF
            END-PERFORM.
-           SET RECALC-PARITY-VALUE(1) TO FUNCTION MOD (ODD-COUNTER, 2).
+           SET RECALCULATED-OVERAL-PARITY-BIT TO 
+            FUNCTION MOD (ODD-COUNTER, 2).
        
-       0008-RECALCULATE-PARITY-BITS.
-           PERFORM VARYING I FROM 2 BY 1 UNTIL I IS GREATER 7
-            MOVE "0" TO REVERSED-MESSAGE(PARITY-INDEX(I):1)
-           END-PERFORM.
-           PERFORM VARYING I FROM 2 BY 1 UNTIL I IS GREATER 7
-            SET ODD-COUNTER TO 0
-            COMPUTE PARITY-STEPS = 2 ** (I - 1)
-            COMPUTE PARITY-CHUNK = 2 ** (I - 2)
-            PERFORM VARYING J FROM PARITY-INDEX(I) BY PARITY-STEPS 
-             UNTIL J IS GREATER 64
-             PERFORM VARYING K FROM 0 BY 1 UNTIL K IS 
-              EQUAL TO PARITY-CHUNK
-              COMPUTE L = J + K
-              IF REVERSED-MESSAGE(L:1) EQUAL "1" THEN
-               ADD 1 TO ODD-COUNTER
-              END-IF
-             END-PERFORM
-            END-PERFORM
-            SET RECALC-PARITY-VALUE(I) TO FUNCTION MOD (ODD-COUNTER, 2)
-           END-PERFORM.
-
-       0009-DETECT-ERROR.
-           SET ERROR-COUNTER TO 0.
-           PERFORM VARYING I FROM 1 BY 1 UNTIL I IS GREATER 7
-            IF RECALC-PARITY-VALUE(I) IS NOT EQUAL TO PARITY-VALUE(I) 
-             THEN
-             ADD 1 TO ERROR-COUNTER
+       0008-FIX-ERROR.
+           MOVE 0 TO WRONG-BIT-POS.
+           PERFORM VARYING I FROM 2 BY 1 UNTIL I IS GREATER 64
+            IF REVERSED-MESSAGE(I:1) EQUAL "1" THEN
+             COMPUTE WRONG-BIT-POS = WRONG-BIT-POS B-XOR (I - 1)
             END-IF
            END-PERFORM.
-           IF ERROR-COUNTER GREATER 0 THEN
-            DISPLAY "Error detected."
-           ELSE
-            DISPLAY "No error detected."
-           END-IF.
+           ADD 1 TO WRONG-BIT-POS.
+           MOVE REVERSED-MESSAGE(WRONG-BIT-POS:1) TO WRONG-BIT.
+      *    TODO - Parse 1 to bit or boolean and then negate.
+           COMPUTE WRONG-BIT = FUNCTION MOD(WRONG-BIT + 1, 2).
+           MOVE WRONG-BIT TO REVERSED-MESSAGE(WRONG-BIT-POS:1).
+           DISPLAY "Fixed reversed: " REVERSED-MESSAGE.
+           
+       0009-READ-DATA.
+      *    TODO - Read port, sequence and char into dynamic list.
+      *    TODO - Add message to the right position in the array,
+      *            to simplify sorting.
+      
+       0010-DISPLAY-FLAG.
+      *    TODO - Print flag.
 
        END PROGRAM MISSION-000.
