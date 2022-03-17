@@ -28,7 +28,7 @@
 
        01  WS-WORK-AREAS.
            88 IS-MESSAGE VALUE HIGH-VALUES.
-           05 LISTENING-PORT USAGE BINARY-SHORT UNSIGNED.
+           05 LISTENING-PORT PIC 9(5).
            05 REVERSED-MESSAGE PIC X(64).
            05 OVERAL-PARITY-BIT PIC 9.
            05 RECALCULATED-OVERAL-PARITY-BIT PIC 9.
@@ -60,8 +60,7 @@
            READ MISSION-FILE.
            PERFORM 0002-READ-LINE UNTIL END-OF-FILE.
            CLOSE MISSION-FILE.
-           PERFORM 0013-FILTER-AND-SORT-MESSAGES.
-           PERFORM 0014-DISPLAY-FLAG.
+           PERFORM 0013-DISPLAY-FLAG.
 
        0002-READ-LINE.
            IF IS-MESSAGE THEN
@@ -91,8 +90,6 @@
        0006-READ-OVERAL-PARITY-BIT.
            MOVE REVERSED-MESSAGE(1:1) TO OVERAL-PARITY-BIT.
 
-      *    TODO - Is this really necessary? Is there double error messages?
-      *            If there is, should I discard the message?
        0007-RECALCULATE-OVERALL-PARITY-BIT.
            SET ODD-COUNTER TO 0.
            PERFORM VARYING I FROM 2 BY 1 UNTIL I IS GREATER 64
@@ -138,6 +135,7 @@
             END-IF
             COMPUTE CONVERTION-BASE-PORT = CONVERTION-BASE-PORT * 2
            END-PERFORM.
+           
       
        0011-CONVERT-CURRENT-SEQUENCE.
            SET CONVERTION-BASE-SEQUENCE TO 1.
@@ -160,14 +158,18 @@
             COMPUTE CONVERTION-BASE-CHAR = CONVERTION-BASE-CHAR * 2
            END-PERFORM.
 
-       0013-FILTER-AND-SORT-MESSAGES.
-      * TODO - Filter and sort messages.
-
-       0014-DISPLAY-FLAG.
-      * TODO - Should the messages be sorted?
-           PERFORM VARYING I FROM 1 BY 1 UNTIL I IS EQUAL MSG-INDEX
-      * TODO - Filter by port. If for a strange reason is not working.
+       0013-DISPLAY-FLAG.
+           SORT WS-MESSAGES DESCENDING MSG-PORT ASCENDING MSG-SEQUENCE.
+           PERFORM VARYING I FROM 1 BY 1 UNTIL I IS EQUAL 201
             DISPLAY MSG-PORT(I) "," MSG-SEQUENCE(I) "," MSG-CHARACTER(I)
            END-PERFORM.
+           PERFORM VARYING I FROM 1 BY 1 UNTIL I IS EQUAL 201
+      * TODO - It should be comparing the found port, not fixed value.
+      *        But it is not working now.
+            IF MSG-PORT(I) = 61173 THEN
+             DISPLAY MSG-CHARACTER(I) WITH NO ADVANCING
+            END-IF
+           END-PERFORM.
+           DISPLAY SPACE.
 
        END PROGRAM MISSION-000.
