@@ -28,7 +28,7 @@
 
        01  WS-WORK-AREAS.
            88 IS-MESSAGE VALUE HIGH-VALUES.
-           05 LISTENING-PORT USAGE BINARY-SHORT UNSIGNED.
+           05 LISTENING-PORT PIC 9(5).
            05 REVERSED-MESSAGE PIC X(64).
            05 OVERAL-PARITY-BIT PIC 9.
            05 RECALCULATED-OVERAL-PARITY-BIT PIC 9.
@@ -138,6 +138,7 @@
             END-IF
             COMPUTE CONVERTION-BASE-PORT = CONVERTION-BASE-PORT * 2
            END-PERFORM.
+           
       
        0011-CONVERT-CURRENT-SEQUENCE.
            SET CONVERTION-BASE-SEQUENCE TO 1.
@@ -164,10 +165,12 @@
       * TODO - Filter and sort messages.
 
        0014-DISPLAY-FLAG.
-      * TODO - Should the messages be sorted?
-           PERFORM VARYING I FROM 1 BY 1 UNTIL I IS EQUAL MSG-INDEX
-      * TODO - Filter by port. If for a strange reason is not working.
-            DISPLAY MSG-PORT(I) "," MSG-SEQUENCE(I) "," MSG-CHARACTER(I)
+           SORT WS-MESSAGES DESCENDING MSG-PORT ASCENDING MSG-SEQUENCE.
+           PERFORM VARYING I FROM 1 BY 1 UNTIL I IS EQUAL 201
+            IF MSG-PORT(I) = 61173 THEN
+             DISPLAY MSG-CHARACTER(I) WITH NO ADVANCING
+            END-IF
            END-PERFORM.
+           DISPLAY SPACE.
 
        END PROGRAM MISSION-000.
